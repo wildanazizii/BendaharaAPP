@@ -21,8 +21,7 @@
           <div class="mb-3">
             <label for="month" class="form-label">Bulan:</label>
             <select class="form-select" id="month" name="month" required>
-              <option value="JanuariB">Januari</option>
-              <option value="JanuariB">Jancok</option>
+              <option value="Januari">Januari</option>
               <option value="Februari">Februari</option>
               <option value="Maret">Maret</option>
               <option value="April">April</option>
@@ -81,9 +80,35 @@
   </div>
 
   <script>
-    const API_KEY = 'AIzaSyDL6sYGiKYg8yB8ODPa1aWpOZ9ipcmRPuI';
+    const CLIENT_ID = '540904698452-dtu5o8ph525i3rh4vq37ce3o0pms0e0j.apps.googleusercontent.com';
+    const API_KEY = 'AIzaSyCbIM4678qIdPy_--FGno5crIl8z14qH8c';
     const SPREADSHEET_ID = '1Tj5BFK0DOLO8-RxTUju9mL0UIs1ejuJRPDyp2gTXC40';
     const SHEET_NAME = 'Bendahara-AQ';
+    
+    // Load the Google Sheets API
+    function loadGoogleSheetsApi() {
+      gapi.load('client:auth2', initClient);
+    }
+
+    function initClient() {
+      gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+        scope: "https://www.googleapis.com/auth/spreadsheets"
+      }).then(function() {
+        // Listen for sign-in state changes
+        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+        // Handle the initial sign-in state
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+      });
+    }
+
+    function updateSigninStatus(isSignedIn) {
+      if (!isSignedIn) {
+        gapi.auth2.getAuthInstance().signIn();
+      }
+    }
 
     // Calculate total when checkboxes change
     const checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -98,7 +123,7 @@
           total += parseInt(checkbox.value);
         }
       });
-      document.getElementById("total").value = total.toLocaleString('id-ID');
+      document.getElementById("total").value = `Rp ${total.toLocaleString('id-ID')}`;
     }
 
     document.getElementById("dataForm").addEventListener("submit", async function(e) {
@@ -110,44 +135,54 @@
       const makan = document.getElementById("makan").checked ? "Ya" : "Tidak";
       const parkir = document.getElementById("parkir").checked ? "Ya" : "Tidak";
       const laptop = document.getElementById("laptop").checked ? "Ya" : "Tidak";
-      const total = document.getElementById("total").value.replace(/,/g, '');
+      const total = document.getElementById("total").value.replace(/[^\d]/g, '');
       const date = new Date().toLocaleDateString('id-ID');
-
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:H:append?valueInputOption=USER_ENTERED&key=${API_KEY}`;
-
-      const body = {
-        values: [[date, month, name, syahriyah, makan, parkir, laptop, total]]
-      };
 
       const statusEl = document.getElementById("status");
       statusEl.classList.remove('d-none');
 
       try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(body)
+        // First, get the last row of the current month
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${SHEET_NAME}!A:B`
         });
 
-        if (response.ok) {
-          statusEl.className = 'alert alert-success';
-          statusEl.innerText = "Data berhasil ditambahkan!";
-          document.getElementById("dataForm").reset();
-          document.getElementById("total").value = "";
-        } else {
-          const error = await response.json();
-          statusEl.className = 'alert alert-danger';
-          statusEl.innerText = `Terjadi kesalahan: ${error.error.message}`;
+        const rows = response.result.values || [];
+        let insertRow = rows.length + 1;
+        
+        // Find the last row of the current month, or start a new section
+        for (let i = rows.length - 1; i >= 0; i--) {
+          if (rows[i][1] === month) {
+            insertRow = i + 2;
+            break;
+          }
         }
+
+        const appendRequest = {
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${SHEET_NAME}!A${insertRow}`,
+          valueInputOption: 'USER_ENTERED',
+          insertDataOption: 'INSERT_ROWS',
+          resource: {
+            values: [[date, month, name, syahriyah, makan, parkir, laptop, total]]
+          }
+        };
+
+        await gapi.client.sheets.spreadsheets.values.append(appendRequest);
+        
+        statusEl.className = 'alert alert-success';
+        statusEl.innerText = "Data berhasil ditambahkan!";
+        document.getElementById("dataForm").reset();
+        document.getElementById("total").value = "";
       } catch (error) {
         console.error(error);
         statusEl.className = 'alert alert-danger';
-        statusEl.innerText = "Gagal mengirim data. Pastikan Google Sheets sudah diatur dengan benar.";
+        statusEl.innerText = "Gagal mengirim data. Pastikan Anda sudah login dan memberikan izin.";
       }
     });
   </script>
+  <script src="https://apis.google.com/js/api.js?onload=loadGoogleSheetsApi"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
