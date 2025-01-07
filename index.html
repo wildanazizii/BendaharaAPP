@@ -90,18 +90,21 @@
     let accessToken = null;
 
     window.onload = function () {
+      console.log('Window loaded, initializing Google Identity Services...');
+      
       // Initialize the tokenClient
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: 'https://www.googleapis.com/auth/spreadsheets',
         callback: (tokenResponse) => {
+          console.log('Token response received:', tokenResponse ? 'success' : 'failed');
           if (tokenResponse && tokenResponse.access_token) {
+            console.log('Access token received, showing form...');
             accessToken = tokenResponse.access_token;
-            document.getElementById('dataForm').style.display = 'block';
-            const statusEl = document.getElementById("status");
-            statusEl.classList.remove('d-none');
-            statusEl.className = 'alert alert-success';
-            statusEl.innerText = "Berhasil login! Silakan masukkan data.";
+            showForm();
+          } else {
+            console.log('No access token in response');
+            showError('Gagal mendapatkan akses token');
           }
         },
       });
@@ -109,17 +112,45 @@
       // Initialize the Sign In With Google button
       google.accounts.id.initialize({
         client_id: CLIENT_ID,
-        callback: handleCredentialResponse
+        callback: handleCredentialResponse,
+        auto_select: true
       });
+      
+      console.log('Rendering Google Sign-In button...');
       google.accounts.id.renderButton(
         document.getElementById("buttonDiv"),
-        { theme: "outline", size: "large", text: "signin_with" }
+        { 
+          theme: "outline", 
+          size: "large", 
+          text: "signin_with",
+          width: 250
+        }
       );
     };
 
+    function showForm() {
+      document.getElementById('dataForm').style.display = 'block';
+      const statusEl = document.getElementById("status");
+      statusEl.classList.remove('d-none');
+      statusEl.className = 'alert alert-success';
+      statusEl.innerText = "Berhasil login! Silakan masukkan data.";
+    }
+
+    function showError(message) {
+      const statusEl = document.getElementById("status");
+      statusEl.classList.remove('d-none');
+      statusEl.className = 'alert alert-danger';
+      statusEl.innerText = message;
+    }
+
     function handleCredentialResponse(response) {
-      // After getting the credential response, request access token
-      tokenClient.requestAccessToken();
+      console.log('Credential response received, requesting access token...');
+      if (response && response.credential) {
+        tokenClient.requestAccessToken({ prompt: '' });
+      } else {
+        console.log('No credential in response');
+        showError('Gagal mendapatkan kredensial Google');
+      }
     }
 
     // Calculate total when checkboxes change
