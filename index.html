@@ -17,7 +17,12 @@
         <h2>Sistem Pencatatan Bendahara AQ</h2>
       </div>
       <div class="card-body">
-        <form id="dataForm">
+        <div id="authorize-div" style="display: none">
+          <button id="authorize-button" class="btn btn-primary mb-3">
+            Login dengan Google
+          </button>
+        </div>
+        <form id="dataForm" style="display: none">
           <div class="mb-3">
             <label for="month" class="form-label">Bulan:</label>
             <select class="form-select" id="month" name="month" required>
@@ -101,13 +106,39 @@
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         // Handle the initial sign-in state
         updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+        
+        // Handle the initial sign-in state
+        document.getElementById('authorize-button').onclick = handleAuthClick;
+      }).catch(function(error) {
+        console.error('Error initializing Google Sheets API:', error);
+        const statusEl = document.getElementById("status");
+        statusEl.classList.remove('d-none');
+        statusEl.className = 'alert alert-danger';
+        statusEl.innerText = "Error initializing: " + error.details || error.message || "Unknown error";
       });
     }
 
     function updateSigninStatus(isSignedIn) {
-      if (!isSignedIn) {
-        gapi.auth2.getAuthInstance().signIn();
+      const authorizeDiv = document.getElementById('authorize-div');
+      const formDiv = document.getElementById('dataForm');
+      
+      if (isSignedIn) {
+        authorizeDiv.style.display = 'none';
+        formDiv.style.display = 'block';
+      } else {
+        authorizeDiv.style.display = 'block';
+        formDiv.style.display = 'none';
       }
+    }
+
+    function handleAuthClick(event) {
+      gapi.auth2.getAuthInstance().signIn().catch(function(error) {
+        console.error('Error signing in:', error);
+        const statusEl = document.getElementById("status");
+        statusEl.classList.remove('d-none');
+        statusEl.className = 'alert alert-danger';
+        statusEl.innerText = "Error signing in: " + (error.error || "Unknown error");
+      });
     }
 
     // Calculate total when checkboxes change
