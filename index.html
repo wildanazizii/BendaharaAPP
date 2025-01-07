@@ -175,21 +175,39 @@
       const date = new Date().toLocaleDateString('id-ID');
 
       try {
+        // First, get the sheets in the spreadsheet
+        const sheetsResponse = await gapi.client.sheets.spreadsheets.get({
+          spreadsheetId: SPREADSHEET_ID
+        });
+        
+        console.log('Available sheets:', sheetsResponse.result.sheets);
+        
+        // Then append the data
         const result = await gapi.client.sheets.spreadsheets.values.append({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${SHEET_NAME}!A:H`,
+          range: 'Sheet1!A:H',  // Using Sheet1 as default sheet name
           valueInputOption: 'USER_ENTERED',
+          insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[date, month, name, syahriyah, makan, parkir, laptop, total]]
           }
         });
 
+        console.log('Append result:', result);
         showMessage('Data berhasil ditambahkan!', 'success');
         document.getElementById("dataForm").reset();
         document.getElementById("total").value = "";
       } catch (err) {
-        console.error('Error:', err);
-        showMessage(`Gagal menyimpan data: ${err.message}`, 'danger');
+        console.error('Error details:', err.result?.error || err);
+        let errorMessage = 'Gagal menyimpan data: ';
+        if (err.result?.error?.message) {
+          errorMessage += err.result.error.message;
+        } else if (err.message) {
+          errorMessage += err.message;
+        } else {
+          errorMessage += 'Unknown error';
+        }
+        showMessage(errorMessage, 'danger');
       }
     });
 
