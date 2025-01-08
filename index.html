@@ -179,7 +179,7 @@
           range: `${month}!A:A`
         });
         
-        const nextNo = (response.result.values?.length || 0) + 1;
+        const nextNo = (response.result.values?.length || 0) === 0 ? 1 : (response.result.values.length + 1);
 
         // Append the data to the appropriate monthly sheet
         const result = await gapi.client.sheets.spreadsheets.values.append({
@@ -189,7 +189,7 @@
           insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[
-              '', '', '', '', nextNo, 
+              nextNo,
               name,
               syahriyah,
               makan,
