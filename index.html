@@ -108,9 +108,23 @@
             </div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">Total Pembayaran:</label>
-            <input type="text" class="form-control" id="total" readonly>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Bayar untuk berapa bulan:</label>
+              <select class="form-select" id="multiplier" name="multiplier">
+                <option value="1">1 Bulan</option>
+                <option value="2">2 Bulan</option>
+                <option value="3">3 Bulan</option>
+                <option value="4">4 Bulan</option>
+                <option value="5">5 Bulan</option>
+                <option value="6">6 Bulan</option>
+                <option value="12">12 Bulan</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Total Pembayaran:</label>
+              <input type="text" class="form-control" id="total" readonly>
+            </div>
           </div>
 
           <button type="submit" class="btn btn-success">Simpan Data</button>
@@ -263,10 +277,11 @@
 
       const month = document.getElementById("month").value;
       const name = document.getElementById("name").value;
-      const syahriyah = document.getElementById("syahriyah").checked ? "75000" : "";
-      const makan = document.getElementById("makan").checked ? "300000" : "";
-      const parkir = document.getElementById("parkir").checked ? "30000" : "";
-      const laptop = document.getElementById("laptop").checked ? "10000" : "";
+      const multiplier = parseInt(document.getElementById("multiplier").value) || 1;
+      const syahriyah = document.getElementById("syahriyah").checked ? (75000 * multiplier).toString() : "";
+      const makan = document.getElementById("makan").checked ? (300000 * multiplier).toString() : "";
+      const parkir = document.getElementById("parkir").checked ? (30000 * multiplier).toString() : "";
+      const laptop = document.getElementById("laptop").checked ? (10000 * multiplier).toString() : "";
 
       try {
         // Get existing data from rows 6 onwards
@@ -337,14 +352,19 @@
     });
 
     function calculateTotal() {
+      const multiplier = parseInt(document.getElementById("multiplier").value) || 1;
       let total = 0;
       checkboxes.forEach(checkbox => {
         if (checkbox.checked) {
           total += parseInt(checkbox.value);
         }
       });
+      total *= multiplier;
       document.getElementById("total").value = `Rp ${total.toLocaleString('id-ID')}`;
     }
+
+    // Add event listener for multiplier change
+    document.getElementById("multiplier").addEventListener('change', calculateTotal);
 
     $(document).ready(function() {
         $('#name').select2({
