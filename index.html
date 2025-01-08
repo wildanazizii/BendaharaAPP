@@ -211,43 +211,77 @@
       const laptop = document.getElementById("laptop").checked ? "10000" : "";
 
       try {
-        // Get the current row count to determine the next NO value
+        // Get all data from the sheet to calculate totals
         const response = await gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:A`
+          range: `${month}!A:F`
         });
+        
         // Adjust the starting row for numbering
         const startRow = 5;
-
-        // Get the current number of rows of data (response.result.values?.length || 0)
         const currentRowCount = response.result.values?.length || 0;
-
-        // Calculate the next number, starting from 1 at row 5
         const nextNo = currentRowCount >= startRow ? currentRowCount - startRow + 1 : 1;
 
-        // Append the data to the appropriate monthly sheet
-        const result = await gapi.client.sheets.spreadsheets.values.append({
+        // Calculate totals from existing data
+        let totals = {
+          syahriyah: 0,
+          makan: 0,
+          parkir: 0,
+          laptop: 0
+        };
+
+        if (response.result.values && response.result.values.length > startRow) {
+          const data = response.result.values.slice(startRow);
+          data.forEach(row => {
+            totals.syahriyah += row[2] ? parseInt(row[2]) : 0;
+            totals.makan += row[3] ? parseInt(row[3]) : 0;
+            totals.parkir += row[4] ? parseInt(row[4]) : 0;
+            totals.laptop += row[5] ? parseInt(row[5]) : 0;
+          });
+        }
+
+        // Add current form values to totals
+        totals.syahriyah += syahriyah ? parseInt(syahriyah) : 0;
+        totals.makan += makan ? parseInt(makan) : 0;
+        totals.parkir += parkir ? parseInt(parkir) : 0;
+        totals.laptop += laptop ? parseInt(laptop) : 0;
+
+        // Append the data and totals to the appropriate monthly sheet
+        const result = await gapi.client.sheets.spreadsheets.values.batchUpdate({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:F`,
-          valueInputOption: 'USER_ENTERED',
-          insertDataOption: 'INSERT_ROWS',
           resource: {
-            values: [[
-              nextNo,
-              name,
-              syahriyah,
-              makan,
-              parkir,
-              laptop
-            ]]
+            valueInputOption: 'USER_ENTERED',
+            data: [
+              {
+                range: `${month}!A${currentRowCount + 1}`,
+                values: [[
+                  nextNo,
+                  name,
+                  syahriyah,
+                  makan,
+                  parkir,
+                  laptop
+                ]]
+              },
+              {
+                range: `${month}!B${currentRowCount + 2}:F${currentRowCount + 2}`,
+                values: [[
+                  'Total:',
+                  `Rp ${totals.syahriyah.toLocaleString('id-ID')}`,
+                  `Rp ${totals.makan.toLocaleString('id-ID')}`,
+                  `Rp ${totals.parkir.toLocaleString('id-ID')}`,
+                  `Rp ${totals.laptop.toLocaleString('id-ID')}`
+                ]]
+              }
+            ]
           }
         });
 
-
-        console.log('Append result:', result);
+        console.log('Update result:', result);
         showMessage('Data berhasil ditambahkan ke sheet ' + month + '!', 'success');
         document.getElementById("dataForm").reset();
         document.getElementById("total").value = "";
+        $('#name').val('').trigger('change');
       } catch (err) {
         console.error('Error details:', err.result?.error || err);
         if (err.result?.error?.status === 'INVALID_ARGUMENT' && 
