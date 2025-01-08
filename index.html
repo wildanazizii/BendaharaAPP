@@ -10,37 +10,6 @@
   <style>
     body { padding: 20px; background-color: #f8f9fa; }
     .card { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-    
-    /* Tambahan style untuk tabel */
-    .payment-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    
-    .payment-table th,
-    .payment-table td {
-      border: 1px solid #000;
-      padding: 8px;
-      text-align: left;
-    }
-    
-    .payment-table th {
-      background-color: #f8f9fa;
-      font-weight: bold;
-    }
-    
-    .text-center {
-      text-align: center;
-    }
-    
-    .text-right {
-      text-align: right;
-    }
-    
-    .table-footer {
-      font-weight: bold;
-    }
   </style>
 </head>
 <body>
@@ -110,62 +79,6 @@
         </form>
         <div class="mt-3">
           <p id="status" class="alert alert-info d-none"></p>
-        </div>
-        
-        <h3 class="text-center">Daftar Pembayaran Santri Putra</h3>
-        <h4 class="text-center mb-4">Bulan <span id="currentMonth">Desember</span> 2024</h4>
-        
-        <table class="payment-table">
-          <thead>
-            <tr>
-              <th>NO</th>
-              <th>NAMA</th>
-              <th>SYARIAH</th>
-              <th>MAKAN</th>
-              <th>Parkir</th>
-              <th>Laptop</th>
-            </tr>
-          </thead>
-          <tbody id="paymentTableBody">
-            <!-- Data akan diisi melalui JavaScript -->
-          </tbody>
-          <tfoot>
-            <tr class="table-footer">
-              <td colspan="2">Jumlah</td>
-              <td class="text-right" id="totalSyariah">Rp 0</td>
-              <td class="text-right" id="totalMakan">Rp 0</td>
-              <td class="text-right" id="totalParkir">Rp 0</td>
-              <td class="text-right" id="totalLaptop">Rp 0</td>
-            </tr>
-            <tr class="table-footer">
-              <td colspan="2">Total</td>
-              <td colspan="4" class="text-right" id="grandTotal">Rp 0</td>
-            </tr>
-          </tfoot>
-        </table>
-        
-        <table class="payment-table mt-4">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>Tambahan</th>
-              <th>Nominal</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>Kebersihan dan Pendaftaran</td>
-              <td class="text-right">Rp 100,000</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="text-end mt-4">
-          <p>Surakarta, 31 Desember 2024</p>
-          <p>Pengasuh PP Al Qur'an'ny</p>
-          <br><br><br>
-          <p>Romo K.H. Muhammad Choiri, S.Ag</p>
         </div>
       </div>
     </div>
@@ -254,47 +167,58 @@
 
       const month = document.getElementById("month").value;
       const name = document.getElementById("name").value;
-      const syahriyah = document.getElementById("syahriyah").checked ? "Ya" : "Tidak";
-      const makan = document.getElementById("makan").checked ? "Ya" : "Tidak";
-      const parkir = document.getElementById("parkir").checked ? "Ya" : "Tidak";
-      const laptop = document.getElementById("laptop").checked ? "Ya" : "Tidak";
-      const total = document.getElementById("total").value.replace(/[^\d]/g, '');
-      const date = new Date().toLocaleDateString('id-ID');
+      const syahriyah = document.getElementById("syahriyah").checked ? "75000" : "";
+      const makan = document.getElementById("makan").checked ? "300000" : "";
+      const parkir = document.getElementById("parkir").checked ? "30000" : "";
+      const laptop = document.getElementById("laptop").checked ? "10000" : "";
 
       try {
-        // First, get the sheets in the spreadsheet
-        const sheetsResponse = await gapi.client.sheets.spreadsheets.get({
-          spreadsheetId: SPREADSHEET_ID
+        // Get the current row count to determine the next NO value
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${month}!A:A`
         });
         
-        console.log('Available sheets:', sheetsResponse.result.sheets);
-        
-        // Then append the data
+        const nextNo = (response.result.values?.length || 0) + 1;
+
+        // Append the data to the appropriate monthly sheet
         const result = await gapi.client.sheets.spreadsheets.values.append({
           spreadsheetId: SPREADSHEET_ID,
-          range: 'Sheet1!A:H',  // Using Sheet1 as default sheet name
+          range: `${month}!A:F`,
           valueInputOption: 'USER_ENTERED',
           insertDataOption: 'INSERT_ROWS',
           resource: {
-            values: [[date, month, name, syahriyah, makan, parkir, laptop, total]]
+            values: [[
+              nextNo,
+              name,
+              syahriyah,
+              makan,
+              parkir,
+              laptop
+            ]]
           }
         });
 
         console.log('Append result:', result);
-        showMessage('Data berhasil ditambahkan!', 'success');
+        showMessage('Data berhasil ditambahkan ke sheet ' + month + '!', 'success');
         document.getElementById("dataForm").reset();
         document.getElementById("total").value = "";
       } catch (err) {
         console.error('Error details:', err.result?.error || err);
-        let errorMessage = 'Gagal menyimpan data: ';
-        if (err.result?.error?.message) {
-          errorMessage += err.result.error.message;
-        } else if (err.message) {
-          errorMessage += err.message;
+        if (err.result?.error?.status === 'INVALID_ARGUMENT' && 
+            err.result?.error?.message?.includes('Unable to parse range')) {
+          showMessage(`Sheet ${month} belum ada. Silakan hubungi admin untuk membuat sheet bulanan.`, 'warning');
         } else {
-          errorMessage += 'Unknown error';
+          let errorMessage = 'Gagal menyimpan data: ';
+          if (err.result?.error?.message) {
+            errorMessage += err.result.error.message;
+          } else if (err.message) {
+            errorMessage += err.message;
+          } else {
+            errorMessage += 'Unknown error';
+          }
+          showMessage(errorMessage, 'danger');
         }
-        showMessage(errorMessage, 'danger');
       }
     });
 
@@ -313,71 +237,6 @@
       });
       document.getElementById("total").value = `Rp ${total.toLocaleString('id-ID')}`;
     }
-
-    function formatCurrency(amount) {
-      return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(amount).replace('IDR', 'Rp');
-    }
-
-    function updatePaymentTable(data) {
-      const tableBody = document.getElementById('paymentTableBody');
-      tableBody.innerHTML = '';
-      
-      let totalSyariah = 0;
-      let totalMakan = 0;
-      let totalParkir = 0;
-      let totalLaptop = 0;
-
-      data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${item.nama}</td>
-          <td class="text-right">${item.syariah ? formatCurrency(item.syariah) : ''}</td>
-          <td class="text-right">${item.makan ? formatCurrency(item.makan) : ''}</td>
-          <td class="text-right">${item.parkir ? formatCurrency(item.parkir) : ''}</td>
-          <td class="text-right">${item.laptop ? formatCurrency(item.laptop) : ''}</td>
-        `;
-        tableBody.appendChild(row);
-
-        totalSyariah += item.syariah || 0;
-        totalMakan += item.makan || 0;
-        totalParkir += item.parkir || 0;
-        totalLaptop += item.laptop || 0;
-      });
-
-      // Update totals
-      document.getElementById('totalSyariah').textContent = formatCurrency(totalSyariah);
-      document.getElementById('totalMakan').textContent = formatCurrency(totalMakan);
-      document.getElementById('totalParkir').textContent = formatCurrency(totalParkir);
-      document.getElementById('totalLaptop').textContent = formatCurrency(totalLaptop);
-      
-      const grandTotal = totalSyariah + totalMakan + totalParkir + totalLaptop;
-      document.getElementById('grandTotal').textContent = formatCurrency(grandTotal);
-    }
-
-    // Sample data untuk testing
-    const sampleData = [
-      { nama: 'Abyan', syariah: 70000, makan: 300000, parkir: 30000, laptop: 0 },
-      { nama: 'Ahmad', syariah: 140000, makan: 600000, parkir: 0, laptop: 0 },
-      { nama: 'Akmal', syariah: 210000, makan: 900000, parkir: 0, laptop: 0 },
-      { nama: 'Ali maskur musa', syariah: 70000, makan: 300000, parkir: 30000, laptop: 10000 },
-      { nama: 'Bapas', syariah: 70000, makan: 300000, parkir: 30000, laptop: 10000 },
-      { nama: 'Dani', syariah: 70000, makan: 300000, parkir: 30000, laptop: 10000 },
-      { nama: 'Najib', syariah: 70000, makan: 300000, parkir: 30000, laptop: 10000 },
-      { nama: 'Rasikh', syariah: 70000, makan: 300000, parkir: 0, laptop: 10000 },
-      { nama: 'Sadam', syariah: 70000, makan: 300000, parkir: 0, laptop: 0 },
-      { nama: 'Thoriq', syariah: 70000, makan: 300000, parkir: 30000, laptop: 0 }
-    ];
-
-    // Initialize table with sample data
-    document.addEventListener('DOMContentLoaded', () => {
-      updatePaymentTable(sampleData);
-    });
   </script>
   <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
   <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
