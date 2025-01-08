@@ -178,8 +178,14 @@
           spreadsheetId: SPREADSHEET_ID,
           range: `${month}!A:A`
         });
-        
-        const nextNo = (response.result.values?.length || 0) === 0 ? 1 : (response.result.values.length + 1);
+        // Adjust the starting row for numbering
+        const startRow = 5;
+
+        // Get the current number of rows of data (response.result.values?.length || 0)
+        const currentRowCount = response.result.values?.length || 0;
+
+        // Calculate the next number, starting from 1 at row 5
+        const nextNo = currentRowCount >= startRow ? currentRowCount - startRow + 1 : 1;
 
         // Append the data to the appropriate monthly sheet
         const result = await gapi.client.sheets.spreadsheets.values.append({
@@ -198,6 +204,7 @@
             ]]
           }
         });
+
 
         console.log('Append result:', result);
         showMessage('Data berhasil ditambahkan ke sheet ' + month + '!', 'success');
