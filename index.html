@@ -7,6 +7,15 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://apis.google.com/js/api.js"></script>
   <script src="https://accounts.google.com/gsi/client" async></script>
+  <!-- Include Select2 CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-beta.1/css/select2.min.css" rel="stylesheet" />
+
+  <!-- Include jQuery (required for Select2) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Include Select2 JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-beta.1/js/select2.min.js"></script>
+
   <style>
     body { padding: 20px; background-color: #f8f9fa; }
     .card { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
@@ -43,11 +52,39 @@
 
           <div class="mb-3">
             <label for="name" class="form-label">Nama:</label>
-            <select class="form-select" id="name" name="name" required>
+            <select class="form-select" id="name" name="name" style="width: 100%;" required>
               <option value="">Pilih Nama...</option>
+              <option value="Abyan">Abyan</option>
               <option value="Ahmad">Ahmad</option>
-              <option value="Budi">Budi</option>
-              <option value="Charlie">Charlie</option>
+              <option value="Akmal">Akmal</option>
+              <option value="Ali Maskur Musa">Ali Maskur Musa</option>
+              <option value="Anas">Anas</option>
+              <option value="Aufa">Aufa</option>
+              <option value="Bagas">Bagas</option>
+              <option value="Dafa">Dafa</option>
+              <option value="Dani">Dani</option>
+              <option value="Faaz">Faaz</option>
+              <option value="Fathir">Fathir</option>
+              <option value="Hanif">Hanif</option>
+              <option value="Irsyad">Irsyad</option>
+              <option value="Naban">Naban</option>
+              <option value="Najib">Najib</option>
+              <option value="Raka">Raka</option>
+              <option value="Rasikh">Rasikh</option>
+              <option value="Basya">Basya</option>
+              <option value="Restu">Restu</option>
+              <option value="Rifki">Rifki</option>
+              <option value="Rizki">Rizki</option>
+              <option value="Rosyidun Hanif">Rosyidun Hanif</option>
+              <option value="Sadam">Sadam</option>
+              <option value="Syauqi Anshori">Syauqi Anshori</option>
+              <option value="Thoriq">Thoriq</option>
+              <option value="Topik">Topik</option>
+              <option value="Wildan">Wildan</option>
+              <option value="Yudha">Yudha</option>
+              <option value="Zaki">Zaki</option>
+              <option value="Zidan">Zidan</option>
+              <option value="Zidan Satria">Zidan Satria</option>
             </select>
           </div>
 
@@ -244,6 +281,14 @@
       });
       document.getElementById("total").value = `Rp ${total.toLocaleString('id-ID')}`;
     }
+
+    $(document).ready(function() {
+        $('#name').select2({
+            placeholder: "Pilih Nama...",
+            allowClear: true
+        });
+    });
+
   </script>
   <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
   <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
