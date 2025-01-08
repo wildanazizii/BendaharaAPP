@@ -129,10 +129,60 @@
     const SHEET_NAME = 'Bendahara-AQ';
     const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
     const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+    const SESSION_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
 
     let tokenClient;
     let gapiInited = false;
     let gisInited = false;
+
+    // Check session status on page load
+    window.onload = function() {
+      checkSession();
+    };
+
+    function checkSession() {
+      const sessionData = JSON.parse(localStorage.getItem('bendaharaSession'));
+      if (sessionData) {
+        const currentTime = new Date().getTime();
+        if (currentTime - sessionData.timestamp < SESSION_TIMEOUT) {
+          // Session is still valid
+          restoreSession(sessionData);
+        } else {
+          // Session has expired
+          handleSignoutClick();
+        }
+      }
+    }
+
+    async function restoreSession(sessionData) {
+      try {
+        // Restore the access token
+        gapi.client.setToken({
+          access_token: sessionData.accessToken
+        });
+        
+        // Update UI
+        document.getElementById('signout_button').style.display = 'inline-block';
+        document.getElementById('authorize_button').style.display = 'none';
+        document.getElementById('dataForm').style.display = 'block';
+        showMessage('Sesi login berhasil dipulihkan!', 'success');
+      } catch (error) {
+        console.error('Error restoring session:', error);
+        handleSignoutClick();
+      }
+    }
+
+    function saveSession(accessToken) {
+      const sessionData = {
+        accessToken: accessToken,
+        timestamp: new Date().getTime()
+      };
+      localStorage.setItem('bendaharaSession', JSON.stringify(sessionData));
+    }
+
+    function clearSession() {
+      localStorage.removeItem('bendaharaSession');
+    }
 
     function showMessage(message, type) {
       const statusEl = document.getElementById("status");
@@ -166,7 +216,11 @@
 
     function maybeEnableButtons() {
       if (gapiInited && gisInited) {
-        document.getElementById('authorize_button').style.display = 'inline-block';
+        // Only show authorize button if there's no valid session
+        const sessionData = JSON.parse(localStorage.getItem('bendaharaSession'));
+        if (!sessionData || (new Date().getTime() - sessionData.timestamp >= SESSION_TIMEOUT)) {
+          document.getElementById('authorize_button').style.display = 'inline-block';
+        }
       }
     }
 
@@ -175,6 +229,9 @@
         if (resp.error !== undefined) {
           throw (resp);
         }
+        // Save session data
+        saveSession(gapi.client.getToken().access_token);
+        
         document.getElementById('signout_button').style.display = 'inline-block';
         document.getElementById('authorize_button').style.display = 'none';
         document.getElementById('dataForm').style.display = 'block';
@@ -193,6 +250,7 @@
       if (token !== null) {
         google.accounts.oauth2.revoke(token.access_token);
         gapi.client.setToken('');
+        clearSession();
         document.getElementById('dataForm').style.display = 'none';
         document.getElementById('authorize_button').style.display = 'inline-block';
         document.getElementById('signout_button').style.display = 'none';
@@ -211,32 +269,26 @@
       const laptop = document.getElementById("laptop").checked ? "10000" : "";
 
       try {
-        // First, get all values from the sheet to find the last data row
+        // Get the current row count to determine the next NO value
         const response = await gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:F`
+          range: `${month}!A:A`
         });
+        // Adjust the starting row for numbering
+        const startRow = 5;
 
-        let nextNo = 1;
-        let insertRow = 5; // Default starting row
-        
-        if (response.result.values) {
-          // Find the last row with data before the "Jumlah" row
-          for (let i = response.result.values.length - 1; i >= 0; i--) {
-            const row = response.result.values[i];
-            if (row[0] && !isNaN(row[0]) && row[0] !== "No") {
-              nextNo = parseInt(row[0]) + 1;
-              insertRow = i + 2; // Insert after the last data row
-              break;
-            }
-          }
-        }
+        // Get the current number of rows of data (response.result.values?.length || 0)
+        const currentRowCount = response.result.values?.length || 0;
 
-        // Insert the new row at the specific position
-        const result = await gapi.client.sheets.spreadsheets.values.update({
+        // Calculate the next number, starting from 1 at row 5
+        const nextNo = currentRowCount >= startRow ? currentRowCount - startRow + 1 : 1;
+
+        // Append the data to the appropriate monthly sheet
+        const result = await gapi.client.sheets.spreadsheets.values.append({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A${insertRow}:F${insertRow}`,
+          range: `${month}!A:F`,
           valueInputOption: 'USER_ENTERED',
+          insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[
               nextNo,
@@ -249,11 +301,11 @@
           }
         });
 
-        console.log('Update result:', result);
+
+        console.log('Append result:', result);
         showMessage('Data berhasil ditambahkan ke sheet ' + month + '!', 'success');
         document.getElementById("dataForm").reset();
         document.getElementById("total").value = "";
-        $('#name').val('').trigger('change');
       } catch (err) {
         console.error('Error details:', err.result?.error || err);
         if (err.result?.error?.status === 'INVALID_ARGUMENT' && 
