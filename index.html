@@ -17,8 +17,33 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-beta.1/js/select2.min.js"></script>
 
   <style>
-    body { padding: 20px; background-color: #f8f9fa; }
-    .card { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+    body { 
+      padding: 20px; 
+      background-color: #f8f9fa;
+      padding-bottom: 70px; /* Add padding to prevent content from being hidden behind footer */
+    }
+    .card { 
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+    }
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: #198754;
+      color: white;
+      padding: 15px 0;
+      z-index: 1000;
+    }
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .total-amount {
+      font-size: 1.2em;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -122,6 +147,16 @@
     </div>
   </div>
 
+  <!-- Fixed Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <span>Total Pembayaran:</span>
+        <span class="total-amount" id="footerTotal">Rp 0</span>
+      </div>
+    </div>
+  </footer>
+
   <script>
     const CLIENT_ID = '540904698452-dtu5o8ph525i3rh4vq37ce3o0pms0e0j.apps.googleusercontent.com';
     const API_KEY = 'AIzaSyCbIM4678qIdPy_--FGno5crIl8z14qH8c';
@@ -211,77 +246,43 @@
       const laptop = document.getElementById("laptop").checked ? "10000" : "";
 
       try {
-        // Get all data from the sheet to calculate totals
+        // Get the current row count to determine the next NO value
         const response = await gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:F`
+          range: `${month}!A:A`
         });
-        
         // Adjust the starting row for numbering
         const startRow = 5;
+
+        // Get the current number of rows of data (response.result.values?.length || 0)
         const currentRowCount = response.result.values?.length || 0;
+
+        // Calculate the next number, starting from 1 at row 5
         const nextNo = currentRowCount >= startRow ? currentRowCount - startRow + 1 : 1;
 
-        // Calculate totals from existing data
-        let totals = {
-          syahriyah: 0,
-          makan: 0,
-          parkir: 0,
-          laptop: 0
-        };
-
-        if (response.result.values && response.result.values.length > startRow) {
-          const data = response.result.values.slice(startRow);
-          data.forEach(row => {
-            totals.syahriyah += row[2] ? parseInt(row[2]) : 0;
-            totals.makan += row[3] ? parseInt(row[3]) : 0;
-            totals.parkir += row[4] ? parseInt(row[4]) : 0;
-            totals.laptop += row[5] ? parseInt(row[5]) : 0;
-          });
-        }
-
-        // Add current form values to totals
-        totals.syahriyah += syahriyah ? parseInt(syahriyah) : 0;
-        totals.makan += makan ? parseInt(makan) : 0;
-        totals.parkir += parkir ? parseInt(parkir) : 0;
-        totals.laptop += laptop ? parseInt(laptop) : 0;
-
-        // Append the data and totals to the appropriate monthly sheet
-        const result = await gapi.client.sheets.spreadsheets.values.batchUpdate({
+        // Append the data to the appropriate monthly sheet
+        const result = await gapi.client.sheets.spreadsheets.values.append({
           spreadsheetId: SPREADSHEET_ID,
+          range: `${month}!A:F`,
+          valueInputOption: 'USER_ENTERED',
+          insertDataOption: 'INSERT_ROWS',
           resource: {
-            valueInputOption: 'USER_ENTERED',
-            data: [
-              {
-                range: `${month}!A${currentRowCount + 1}`,
-                values: [[
-                  nextNo,
-                  name,
-                  syahriyah,
-                  makan,
-                  parkir,
-                  laptop
-                ]]
-              },
-              {
-                range: `${month}!B${currentRowCount + 2}:F${currentRowCount + 2}`,
-                values: [[
-                  'Total:',
-                  `Rp ${totals.syahriyah.toLocaleString('id-ID')}`,
-                  `Rp ${totals.makan.toLocaleString('id-ID')}`,
-                  `Rp ${totals.parkir.toLocaleString('id-ID')}`,
-                  `Rp ${totals.laptop.toLocaleString('id-ID')}`
-                ]]
-              }
-            ]
+            values: [[
+              nextNo,
+              name,
+              syahriyah,
+              makan,
+              parkir,
+              laptop
+            ]]
           }
         });
 
-        console.log('Update result:', result);
+
+        console.log('Append result:', result);
         showMessage('Data berhasil ditambahkan ke sheet ' + month + '!', 'success');
         document.getElementById("dataForm").reset();
         document.getElementById("total").value = "";
-        $('#name').val('').trigger('change');
       } catch (err) {
         console.error('Error details:', err.result?.error || err);
         if (err.result?.error?.status === 'INVALID_ARGUMENT' && 
@@ -314,7 +315,9 @@
           total += parseInt(checkbox.value);
         }
       });
+      // Update both the form input and footer
       document.getElementById("total").value = `Rp ${total.toLocaleString('id-ID')}`;
+      document.getElementById("footerTotal").textContent = `Rp ${total.toLocaleString('id-ID')}`;
     }
 
     $(document).ready(function() {
