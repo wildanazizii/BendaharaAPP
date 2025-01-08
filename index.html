@@ -17,33 +17,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-beta.1/js/select2.min.js"></script>
 
   <style>
-    body { 
-      padding: 20px; 
-      background-color: #f8f9fa;
-      padding-bottom: 70px; /* Add padding to prevent content from being hidden behind footer */
-    }
-    .card { 
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-    }
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background-color: #198754;
-      color: white;
-      padding: 15px 0;
-      z-index: 1000;
-    }
-    .footer-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .total-amount {
-      font-size: 1.2em;
-      font-weight: bold;
-    }
+    body { padding: 20px; background-color: #f8f9fa; }
+    .card { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
   </style>
 </head>
 <body>
@@ -147,16 +122,6 @@
     </div>
   </div>
 
-  <!-- Fixed Footer -->
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-content">
-        <span>Total Pembayaran:</span>
-        <span class="total-amount" id="footerTotal">Rp 0</span>
-      </div>
-    </div>
-  </footer>
-
   <script>
     const CLIENT_ID = '540904698452-dtu5o8ph525i3rh4vq37ce3o0pms0e0j.apps.googleusercontent.com';
     const API_KEY = 'AIzaSyCbIM4678qIdPy_--FGno5crIl8z14qH8c';
@@ -246,26 +211,32 @@
       const laptop = document.getElementById("laptop").checked ? "10000" : "";
 
       try {
-        // Get the current row count to determine the next NO value
+        // First, get all values from the sheet to find the last data row
         const response = await gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:A`
+          range: `${month}!A:F`
         });
-        // Adjust the starting row for numbering
-        const startRow = 5;
 
-        // Get the current number of rows of data (response.result.values?.length || 0)
-        const currentRowCount = response.result.values?.length || 0;
+        let nextNo = 1;
+        let insertRow = 5; // Default starting row
+        
+        if (response.result.values) {
+          // Find the last row with data before the "Jumlah" row
+          for (let i = response.result.values.length - 1; i >= 0; i--) {
+            const row = response.result.values[i];
+            if (row[0] && !isNaN(row[0]) && row[0] !== "No") {
+              nextNo = parseInt(row[0]) + 1;
+              insertRow = i + 2; // Insert after the last data row
+              break;
+            }
+          }
+        }
 
-        // Calculate the next number, starting from 1 at row 5
-        const nextNo = currentRowCount >= startRow ? currentRowCount - startRow + 1 : 1;
-
-        // Append the data to the appropriate monthly sheet
-        const result = await gapi.client.sheets.spreadsheets.values.append({
+        // Insert the new row at the specific position
+        const result = await gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:F`,
+          range: `${month}!A${insertRow}:F${insertRow}`,
           valueInputOption: 'USER_ENTERED',
-          insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[
               nextNo,
@@ -278,11 +249,11 @@
           }
         });
 
-
-        console.log('Append result:', result);
+        console.log('Update result:', result);
         showMessage('Data berhasil ditambahkan ke sheet ' + month + '!', 'success');
         document.getElementById("dataForm").reset();
         document.getElementById("total").value = "";
+        $('#name').val('').trigger('change');
       } catch (err) {
         console.error('Error details:', err.result?.error || err);
         if (err.result?.error?.status === 'INVALID_ARGUMENT' && 
@@ -315,9 +286,7 @@
           total += parseInt(checkbox.value);
         }
       });
-      // Update both the form input and footer
       document.getElementById("total").value = `Rp ${total.toLocaleString('id-ID')}`;
-      document.getElementById("footerTotal").textContent = `Rp ${total.toLocaleString('id-ID')}`;
     }
 
     $(document).ready(function() {
