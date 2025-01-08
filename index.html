@@ -269,32 +269,30 @@
       const laptop = document.getElementById("laptop").checked ? "10000" : "";
 
       try {
-        // Get the current row count to determine the next NO value
+        // Get existing data from rows 6 onwards
         const response = await gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:A`
+          range: `${month}!A6:F`  // Only look at data from row 6 onwards
         });
 
-        // Find the last row with content
+        // Find the first empty row starting from row 6
         const values = response.result.values || [];
-        let lastRow = 0;
+        let targetRow = 6;  // Always start checking from row 6
         
-        // Start from the bottom and find the first non-empty row
-        for (let i = values.length - 1; i >= 0; i--) {
-          if (values[i] && values[i][0]) {
-            lastRow = i + 1;
-            break;
+        for (let i = 0; i < values.length; i++) {
+          if (!values[i] || !values[i][0]) {
+            break;  // Found an empty row
           }
+          targetRow++;
         }
 
-        // Calculate the next number
-        const startRow = 5;  // Your header is at row 5
-        const nextNo = lastRow >= startRow ? lastRow - startRow + 1 : 1;
+        // Calculate the entry number (1-based index from row 6)
+        const nextNo = targetRow - 5;  // Row 6 should be number 1
 
-        // Append the data to the last row with content
+        // Write the data to the target row
         const result = await gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A${lastRow + 1}:F${lastRow + 1}`,
+          range: `${month}!A${targetRow}:F${targetRow}`,
           valueInputOption: 'USER_ENTERED',
           resource: {
             values: [[
