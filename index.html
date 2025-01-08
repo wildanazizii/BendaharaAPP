@@ -274,21 +274,28 @@
           spreadsheetId: SPREADSHEET_ID,
           range: `${month}!A:A`
         });
-        // Adjust the starting row for numbering
-        const startRow = 5;
 
-        // Get the current number of rows of data (response.result.values?.length || 0)
-        const currentRowCount = response.result.values?.length || 0;
+        // Find the last row with content
+        const values = response.result.values || [];
+        let lastRow = 0;
+        
+        // Start from the bottom and find the first non-empty row
+        for (let i = values.length - 1; i >= 0; i--) {
+          if (values[i] && values[i][0]) {
+            lastRow = i + 1;
+            break;
+          }
+        }
 
-        // Calculate the next number, starting from 1 at row 5
-        const nextNo = currentRowCount >= startRow ? currentRowCount - startRow + 1 : 1;
+        // Calculate the next number
+        const startRow = 5;  // Your header is at row 5
+        const nextNo = lastRow >= startRow ? lastRow - startRow + 1 : 1;
 
-        // Append the data to the appropriate monthly sheet
-        const result = await gapi.client.sheets.spreadsheets.values.append({
+        // Append the data to the last row with content
+        const result = await gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId: SPREADSHEET_ID,
-          range: `${month}!A:F`,
+          range: `${month}!A${lastRow + 1}:F${lastRow + 1}`,
           valueInputOption: 'USER_ENTERED',
-          insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[
               nextNo,
@@ -301,11 +308,11 @@
           }
         });
 
-
-        console.log('Append result:', result);
+        console.log('Update result:', result);
         showMessage('Data berhasil ditambahkan ke sheet ' + month + '!', 'success');
         document.getElementById("dataForm").reset();
         document.getElementById("total").value = "";
+        $('#name').val('').trigger('change');
       } catch (err) {
         console.error('Error details:', err.result?.error || err);
         if (err.result?.error?.status === 'INVALID_ARGUMENT' && 
