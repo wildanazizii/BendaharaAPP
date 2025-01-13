@@ -242,39 +242,6 @@
         <div class="mt-3">
           <p id="status" class="alert alert-info d-none"></p>
         </div>
-        <div class="table-section mt-5">
-          <h4><i class="fas fa-table me-2"></i>Data Pembayaran</h4>
-          <button id="refreshTable" class="btn btn-primary mb-3">
-            <i class="fas fa-sync-alt me-2"></i>Refresh Data
-          </button>
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead class="table-success">
-                <tr>
-                  <th>No</th>
-                  <th>Nama</th>
-                  <th>Bulan</th>
-                  <th>Syahriyah</th>
-                  <th>Uang Makan</th>
-                  <th>Uang Parkir</th>
-                  <th>Uang Laptop</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody id="paymentTableBody"></tbody>
-              <tfoot class="table-success">
-                <tr>
-                  <td colspan="3"><strong>Total Keseluruhan</strong></td>
-                  <td id="totalSyahriyah">0</td>
-                  <td id="totalMakan">0</td>
-                  <td id="totalParkir">0</td>
-                  <td id="totalLaptop">0</td>
-                  <td id="grandTotal">0</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -524,75 +491,6 @@
         maximumFractionDigits: 0
       }).format(amount);
     }
-
-    // Load table data function
-    async function loadTableData() {
-      try {
-        const response = await gapi.client.sheets.spreadsheets.values.get({
-          spreadsheetId: SPREADSHEET_ID,
-          range: SHEET_NAME
-        });
-
-        const values = response.result.values || [];
-        const tableBody = document.getElementById('paymentTableBody');
-        tableBody.innerHTML = '';
-
-        let totalSyahriyah = 0;
-        let totalMakan = 0;
-        let totalParkir = 0;
-        let totalLaptop = 0;
-        let grandTotal = 0;
-
-        // Skip header row and process data
-        for (let i = 1; i < values.length; i++) {
-          const row = values[i];
-          const tr = document.createElement('tr');
-          
-          // Calculate row totals
-          const syahriyah = parseInt(row[3] || 0);
-          const makan = parseInt(row[4] || 0);
-          const parkir = parseInt(row[5] || 0);
-          const laptop = parseInt(row[6] || 0);
-          const rowTotal = syahriyah + makan + parkir + laptop;
-
-          // Update running totals
-          totalSyahriyah += syahriyah;
-          totalMakan += makan;
-          totalParkir += parkir;
-          totalLaptop += laptop;
-          grandTotal += rowTotal;
-
-          tr.innerHTML = `
-            <td>${i}</td>
-            <td>${row[1] || ''}</td>
-            <td>${row[2] || ''}</td>
-            <td>${formatCurrency(syahriyah)}</td>
-            <td>${formatCurrency(makan)}</td>
-            <td>${formatCurrency(parkir)}</td>
-            <td>${formatCurrency(laptop)}</td>
-            <td>${formatCurrency(rowTotal)}</td>
-          `;
-          tableBody.appendChild(tr);
-        }
-
-        // Update footer totals
-        document.getElementById('totalSyahriyah').textContent = formatCurrency(totalSyahriyah);
-        document.getElementById('totalMakan').textContent = formatCurrency(totalMakan);
-        document.getElementById('totalParkir').textContent = formatCurrency(totalParkir);
-        document.getElementById('totalLaptop').textContent = formatCurrency(totalLaptop);
-        document.getElementById('grandTotal').textContent = formatCurrency(grandTotal);
-
-      } catch (error) {
-        console.error('Error loading table data:', error);
-        showMessage('Gagal memuat data tabel', 'danger');
-      }
-    }
-
-    // Add event listener for refresh button
-    document.getElementById('refreshTable').addEventListener('click', loadTableData);
-
-    // Load table data after successful authentication
-    document.addEventListener('gapiLoaded', loadTableData);
 
   </script>
   <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
